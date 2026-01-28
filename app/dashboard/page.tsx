@@ -11,12 +11,6 @@ interface User {
 }
 
 interface Resource {
-  api_keys: Array<{
-    id: string;
-    api_key: string;
-    is_active: boolean;
-    created_at: string;
-  }>;
   proxies: Array<{
     id: string;
     proxy_url: string;
@@ -49,15 +43,15 @@ export default function DashboardPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [resources, setResources] = useState<Resource | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'api_keys' | 'proxies' | 'rotating_keys' | 'elevenlabs_accounts'>('elevenlabs_accounts');
+  const [activeTab, setActiveTab] = useState<'proxies' | 'rotating_keys' | 'elevenlabs_accounts'>('elevenlabs_accounts');
 
   // Form states
   const [showUserForm, setShowUserForm] = useState(false);
-  const [showApiKeyForm, setShowApiKeyForm] = useState(false);
+  const [showAccountForm, setShowAccountForm] = useState(false);
   const [showProxyForm, setShowProxyForm] = useState(false);
   const [showRotatingKeyForm, setShowRotatingKeyForm] = useState(false);
   const [newUsername, setNewUsername] = useState('');
-  const [newApiKey, setNewApiKey] = useState('');
+  const [newAccountData, setNewAccountData] = useState(''); // For ElevenLabs accounts
   const [newProxy, setNewProxy] = useState('');
   const [newRotatingKey, setNewRotatingKey] = useState('');
   const [bulkMode, setBulkMode] = useState(false);
@@ -147,81 +141,14 @@ export default function DashboardPage() {
     }
   };
 
-  const addApiKey = async () => {
-    if (!selectedUser || !newApiKey.trim()) return;
-
-    try {
-      if (bulkMode) {
-        // Bulk mode: use bulk insert API
-        const keys = newApiKey.split('\n')
-          .map(k => k.trim())
-          .filter(k => k.length > 0);
-        
-        if (keys.length === 0) return;
-        
-        setBulkProgress({ current: 0, total: keys.length, loading: true });
-        
-        const response = await fetch('/api/resources/bulk', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify({
-            userId: selectedUser.id,
-            type: 'api_keys',
-            items: keys,
-          }),
-        });
-
-        const data = await response.json();
-        setBulkProgress({ current: 0, total: 0, loading: false });
-        
-        if (response.ok) {
-          alert(`✅ Đã thêm ${data.count}/${keys.length} API keys!`);
-        } else {
-          alert(`❌ Lỗi: ${data.error}`);
-          return;
-        }
-      } else {
-        // Single mode
-        const response = await fetch('/api/resources/api-keys', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-          body: JSON.stringify({
-            userId: selectedUser.id,
-            apiKey: newApiKey.trim(),
-          }),
-        });
-
-        if (!response.ok) {
-          alert('❌ Lỗi thêm API key!');
-          return;
-        }
-      }
-
-      setNewApiKey('');
-      setShowApiKeyForm(false);
-      setBulkMode(false);
-      fetchUserResources(selectedUser.id);
-    } catch (error) {
-      console.error('Error adding API key:', error);
-      setBulkProgress({ current: 0, total: 0, loading: false });
-      alert('❌ Lỗi kết nối server!');
-    }
-  };
-
-  // NEW: Add ElevenLabs Account
+  // Add ElevenLabs Account
   const addElevenLabsAccount = async () => {
-    if (!selectedUser || !newApiKey.trim()) return;
+    if (!selectedUser || !newAccountData.trim()) return;
 
     try {
       if (bulkMode) {
         // Bulk mode: Parse email:password or email|password
-        const accounts = newApiKey.split('\n')
+        const accounts = newAccountData.split('\n')
           .map(line => line.trim())
           .filter(line => line.length > 0)
           .map(line => {
@@ -265,7 +192,7 @@ export default function DashboardPage() {
         alert(`✅ Đã thêm ${successCount}/${accounts.length} accounts!`);
       } else {
         // Single mode: email:password format
-        const [email, password] = newApiKey.split(':').map(s => s.trim());
+        const [email, password] = newAccountData.split(':').map(s => s.trim());
         
         if (!email || !password || !email.includes('@')) {
           alert('❌ Format không đúng! Vui lòng nhập email và password.');
@@ -293,8 +220,8 @@ export default function DashboardPage() {
         alert('✅ Đã thêm account thành công!');
       }
 
-      setNewApiKey('');
-      setShowApiKeyForm(false);
+      setNewAccountData('');
+      setShowAccountForm(false);
       setBulkMode(false);
       fetchUserResources(selectedUser.id);
     } catch (error) {
@@ -453,19 +380,16 @@ export default function DashboardPage() {
     }
   };
 
-  const deleteAllResources = async (type: 'api_keys' | 'proxies' | 'rotating_keys' | 'elevenlabs_accounts') => {
+  const deleteAllResources = async (type: 'proxies' | 'rotating_keys' | 'elevenlabs_accounts') => {
     if (!selectedUser) return;
 
     const typeNames = {
-      api_keys: 'API Keys',
       proxies: 'Proxies',
       rotating_keys: 'Rotating Keys',
       elevenlabs_accounts: 'ElevenLabs Accounts',
     };
 
-    const count = type === 'api_keys' 
-      ? resources?.api_keys?.length 
-      : type === 'proxies' 
+    const count = type === 'proxies' 
       ? resources?.proxies?.length 
       : type === 'rotating_keys'
       ? resources?.rotating_proxy_keys?.length
@@ -649,14 +573,14 @@ export default function DashboardPage() {
                 <div className="border-b border-gray-200">
                   <nav className="flex -mb-px">
                     <button
-                      onClick={() => setActiveTab('api_keys')}
+                      onClick={() => setActiveTab('elevenlabs_accounts')}
                       className={`px-6 py-4 text-sm font-medium ${
-                        activeTab === 'api_keys'
+                        activeTab === 'elevenlabs_accounts'
                           ? 'border-b-2 border-blue-500 text-blue-600'
                           : 'text-gray-500 hover:text-gray-700'
                       }`}
                     >
-                      🔑 API Keys ({resources?.api_keys?.length || 0})
+                      👤 ElevenLabs Accounts ({resources?.elevenlabs_accounts?.length || 0})
                     </button>
                     <button
                       onClick={() => setActiveTab('proxies')}
@@ -678,141 +602,11 @@ export default function DashboardPage() {
                     >
                       🔄 Rotating Keys ({resources?.rotating_proxy_keys?.length || 0})
                     </button>
-                    <button
-                      onClick={() => setActiveTab('elevenlabs_accounts')}
-                      className={`px-6 py-4 text-sm font-medium ${
-                        activeTab === 'elevenlabs_accounts'
-                          ? 'border-b-2 border-blue-500 text-blue-600'
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      👤 ElevenLabs Accounts ({resources?.elevenlabs_accounts?.length || 0})
-                    </button>
                   </nav>
                 </div>
 
                 <div className="p-6">
                   {/* API Keys Tab */}
-                  {activeTab === 'api_keys' && (
-                    <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-semibold">API Keys</h3>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => deleteAllResources('api_keys')}
-                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
-                          >
-                            🗑️ Xóa tất cả
-                          </button>
-                          <button
-                            onClick={() => setShowApiKeyForm(!showApiKeyForm)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
-                          >
-                            + Thêm API Key
-                          </button>
-                        </div>
-                      </div>
-
-                      {showApiKeyForm && (
-                        <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                          <div className="flex gap-2 mb-2">
-                            <button
-                              onClick={() => setBulkMode(false)}
-                              className={`px-3 py-1 rounded text-sm ${!bulkMode ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-                            >
-                              Thêm 1 key
-                            </button>
-                            <button
-                              onClick={() => setBulkMode(true)}
-                              className={`px-3 py-1 rounded text-sm ${bulkMode ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
-                            >
-                              Thêm nhiều keys (bulk)
-                            </button>
-                          </div>
-                          
-                          {bulkMode ? (
-                            <textarea
-                              placeholder="Paste nhiều API keys, mỗi key 1 dòng&#10;sk_key1&#10;sk_key2&#10;sk_key3"
-                              className="w-full px-4 py-2 border rounded mb-2 font-mono text-sm"
-                              rows={10}
-                              value={newApiKey}
-                              onChange={(e) => setNewApiKey(e.target.value)}
-                            />
-                          ) : (
-                            <input
-                              type="text"
-                              placeholder="Nhập API key (sk_...)"
-                              className="w-full px-4 py-2 border rounded mb-2"
-                              value={newApiKey}
-                              onChange={(e) => setNewApiKey(e.target.value)}
-                            />
-                          )}
-                          
-                          {bulkProgress.loading && (
-                            <div className="mb-2">
-                              <div className="flex justify-between text-sm mb-1">
-                                <span>Đang thêm...</span>
-                                <span>{bulkProgress.current}/{bulkProgress.total}</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div 
-                                  className="bg-blue-600 h-2 rounded-full transition-all"
-                                  style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          <div className="flex gap-2">
-                            <button
-                              onClick={addApiKey}
-                              disabled={bulkProgress.loading}
-                              className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              {bulkProgress.loading ? 'Đang xử lý...' : (bulkMode ? 'Thêm tất cả' : 'Thêm')}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowApiKeyForm(false);
-                                setBulkMode(false);
-                                setNewApiKey('');
-                              }}
-                              disabled={bulkProgress.loading}
-                              className="bg-gray-300 text-gray-700 px-4 py-2 rounded disabled:opacity-50"
-                            >
-                              Hủy
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="space-y-2">
-                        {resources?.api_keys?.map((key) => (
-                          <div
-                            key={key.id}
-                            className="flex justify-between items-center bg-gray-50 p-4 rounded-lg"
-                          >
-                            <div className="flex-1">
-                              <code className="text-sm">{key.api_key.slice(0, 10)}...{key.api_key.slice(-6)}</code>
-                              <span className={`ml-3 text-xs px-2 py-1 rounded ${key.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {key.is_active ? 'Active' : 'Inactive'}
-                              </span>
-                            </div>
-                            <button
-                              onClick={() => deleteResource('api-keys', key.id)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              🗑️ Xóa
-                            </button>
-                          </div>
-                        ))}
-                        {(!resources?.api_keys || resources.api_keys.length === 0) && (
-                          <p className="text-gray-500 text-center py-8">Chưa có API key nào</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Proxies Tab */}
                   {activeTab === 'proxies' && (
                     <div>
@@ -1068,7 +862,7 @@ export default function DashboardPage() {
                             🗑️ Xóa tất cả
                           </button>
                           <button
-                            onClick={() => setShowApiKeyForm(!showApiKeyForm)}
+                            onClick={() => setShowAccountForm(!showAccountForm)}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
                           >
                             + Thêm Account
@@ -1076,7 +870,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      {showApiKeyForm && (
+                      {showAccountForm && (
                         <div className="bg-blue-50 p-4 rounded-lg mb-4">
                           <div className="flex gap-2 mb-2">
                             <button
@@ -1098,8 +892,8 @@ export default function DashboardPage() {
                               placeholder="Paste nhiều accounts, mỗi account 1 dòng (email:password hoặc email|password)&#10;user1@example.com:password1&#10;user2@example.com|password2"
                               className="w-full px-4 py-2 border rounded mb-2 font-mono text-sm"
                               rows={10}
-                              value={newApiKey}
-                              onChange={(e) => setNewApiKey(e.target.value)}
+                              value={newAccountData}
+                              onChange={(e) => setNewAccountData(e.target.value)}
                             />
                           ) : (
                             <div className="space-y-2">
@@ -1107,20 +901,20 @@ export default function DashboardPage() {
                                 type="email"
                                 placeholder="Email (example@hotmail.com)"
                                 className="w-full px-4 py-2 border rounded"
-                                value={newApiKey.split(':')[0] || ''}
+                                value={newAccountData.split(':')[0] || ''}
                                 onChange={(e) => {
-                                  const password = newApiKey.split(':')[1] || '';
-                                  setNewApiKey(`${e.target.value}:${password}`);
+                                  const password = newAccountData.split(':')[1] || '';
+                                  setNewAccountData(`${e.target.value}:${password}`);
                                 }}
                               />
                               <input
                                 type="text"
                                 placeholder="Password"
                                 className="w-full px-4 py-2 border rounded"
-                                value={newApiKey.split(':')[1] || ''}
+                                value={newAccountData.split(':')[1] || ''}
                                 onChange={(e) => {
-                                  const email = newApiKey.split(':')[0] || '';
-                                  setNewApiKey(`${email}:${e.target.value}`);
+                                  const email = newAccountData.split(':')[0] || '';
+                                  setNewAccountData(`${email}:${e.target.value}`);
                                 }}
                               />
                             </div>
@@ -1151,9 +945,9 @@ export default function DashboardPage() {
                             </button>
                             <button
                               onClick={() => {
-                                setShowApiKeyForm(false);
+                                setShowAccountForm(false);
                                 setBulkMode(false);
-                                setNewApiKey('');
+                                setNewAccountData('');
                               }}
                               disabled={bulkProgress.loading}
                               className="bg-gray-300 text-gray-700 px-4 py-2 rounded disabled:opacity-50"
