@@ -100,12 +100,12 @@ export async function GET(
       elevenlabs_accounts: accountsWithPassword,
     };
 
-    // Mã hóa response để tránh bị đọc
-    const encrypted = encryptResponse(JSON.stringify(response));
+    // TODO: Enable encryption sau khi test
+    // const encrypted = encryptResponse(JSON.stringify(response));
+    // return NextResponse.json({ encrypted: encrypted }, { status: 200 });
 
-    return NextResponse.json({ 
-      encrypted: encrypted 
-    }, { status: 200 });
+    // Tạm thời trả về plaintext để test
+    return NextResponse.json(response, { status: 200 });
   } catch (error: any) {
     console.error('Error in GET /api/resources/by-username:', error);
     
