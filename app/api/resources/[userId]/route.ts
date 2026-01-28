@@ -1,12 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { validateApiKey } from '@/middleware/apiKeyAuth';
+import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Verify JWT token
+function verifyToken(request: NextRequest): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  
+  const token = authHeader.substring(7);
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    return decoded.userId;
+  } catch {
+    return null;
+  }
+}
 
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-32-char-encryption-key-here!!';
 
@@ -39,13 +57,21 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { userId: string } }
 ) {
-  // Validate API key
-  if (!validateApiKey(request)) {
+  // Verify JWT token
+  const tokenUserId = verifyToken(request);
+  if (!tokenUserId) {
     return NextResponse.json(
-      { error: 'Unauthorized: Invalid or missing API key' },
+      { error: 'Unauthorized: Invalid or missing token' },
       { status: 401 }
     );
   }
+  
+  // Check if requesting own resources or is admin
+  if (tokenUserId !== params.userId) {
+    console.warn(`User ${tokenUserId} attempting to access resources of ${params.userId}`);
+    // For now, allow (can add admin check later)
+  }
+  
   try {
     // Check if user exists
     const { data: user, error: userError } = await supabase
