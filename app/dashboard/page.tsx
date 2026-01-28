@@ -210,6 +210,96 @@ export default function DashboardPage() {
     }
   };
 
+  // NEW: Add ElevenLabs Account
+  const addElevenLabsAccount = async () => {
+    if (!selectedUser || !newApiKey.trim()) return;
+
+    try {
+      if (bulkMode) {
+        // Bulk mode: Parse email:password or email|password
+        const accounts = newApiKey.split('\n')
+          .map(line => line.trim())
+          .filter(line => line.length > 0)
+          .map(line => {
+            const delimiter = line.includes('|') ? '|' : ':';
+            const [email, password] = line.split(delimiter, 2);
+            return { email: email?.trim(), password: password?.trim() };
+          })
+          .filter(acc => acc.email && acc.password && acc.email.includes('@'));
+        
+        if (accounts.length === 0) {
+          alert('❌ Không có account hợp lệ! Format: email:password hoặc email|password');
+          return;
+        }
+        
+        setBulkProgress({ current: 0, total: accounts.length, loading: true });
+        
+        let successCount = 0;
+        for (let i = 0; i < accounts.length; i++) {
+          const acc = accounts[i];
+          
+          const response = await fetch('/api/resources/elevenlabs-accounts', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
+            body: JSON.stringify({
+              email: acc.email,
+              password: acc.password,
+            }),
+          });
+          
+          if (response.ok) {
+            successCount++;
+          }
+          
+          setBulkProgress({ current: i + 1, total: accounts.length, loading: true });
+        }
+        
+        setBulkProgress({ current: 0, total: 0, loading: false });
+        alert(`✅ Đã thêm ${successCount}/${accounts.length} accounts!`);
+      } else {
+        // Single mode: email:password format
+        const [email, password] = newApiKey.split(':').map(s => s.trim());
+        
+        if (!email || !password || !email.includes('@')) {
+          alert('❌ Format không đúng! Vui lòng nhập email và password.');
+          return;
+        }
+        
+        const response = await fetch('/api/resources/elevenlabs-accounts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            email,
+            password,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          alert(`❌ Lỗi thêm account: ${data.error}`);
+          return;
+        }
+        
+        alert('✅ Đã thêm account thành công!');
+      }
+
+      setNewApiKey('');
+      setShowApiKeyForm(false);
+      setBulkMode(false);
+      fetchUserResources(selectedUser.id);
+    } catch (error) {
+      console.error('Error adding ElevenLabs account:', error);
+      setBulkProgress({ current: 0, total: 0, loading: false });
+      alert('❌ Lỗi kết nối server!');
+    }
+  };
+
   const addProxy = async () => {
     if (!selectedUser || !newProxy.trim()) return;
 
@@ -1049,7 +1139,7 @@ export default function DashboardPage() {
                           
                           <div className="flex gap-2 mt-3">
                             <button
-                              onClick={addApiKey}
+                              onClick={addElevenLabsAccount}
                               disabled={bulkProgress.loading}
                               className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
                             >
