@@ -146,6 +146,17 @@ export default function DashboardPage() {
     if (!selectedUser || !newAccountData.trim()) return;
 
     try {
+      // DEBUG: Log current user info
+      const token = localStorage.getItem('token');
+      if (token) {
+        const decoded = JSON.parse(atob(token.split('.')[1]));
+        console.log('🔍 Adding account for user:', decoded.userId);
+        console.log('🔍 Selected user in UI:', selectedUser.id);
+        if (decoded.userId !== selectedUser.id) {
+          console.error('⚠️ MISMATCH: Token userId !== Selected userId');
+        }
+      }
+      
       if (bulkMode) {
         // Bulk mode: Parse email:password or email|password
         const accounts = newAccountData.split('\n')
@@ -176,6 +187,7 @@ export default function DashboardPage() {
               'Authorization': `Bearer ${localStorage.getItem('token')}`,
             },
             body: JSON.stringify({
+              userId: selectedUser.id,  // ✅ Thêm userId của user được chọn
               email: acc.email,
               password: acc.password,
             }),
@@ -206,6 +218,7 @@ export default function DashboardPage() {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
           body: JSON.stringify({
+            userId: selectedUser.id,  // ✅ Thêm userId của user được chọn
             email,
             password,
           }),

@@ -108,13 +108,13 @@ export async function GET(request: NextRequest) {
 // POST - Add new account
 export async function POST(request: NextRequest) {
   try {
-    const userId = verifyToken(request);
-    if (!userId) {
+    const tokenUserId = verifyToken(request);
+    if (!tokenUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     const body = await request.json();
-    const { email, password, notes } = body;
+    const { userId, email, password, notes } = body;
     
     if (!email || !password) {
       return NextResponse.json(
@@ -123,6 +123,11 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Determine target user_id:
+    // - If userId provided in body (admin adding for another user), use it
+    // - Otherwise use token's userId (user adding for themselves)
+    const targetUserId = userId || tokenUserId;
+    
     // Encrypt password
     const passwordEncrypted = encryptPassword(password);
     
@@ -130,7 +135,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase
       .from('elevenlabs_accounts')
       .insert({
-        user_id: userId,
+        user_id: targetUserId,  // ✅ Use targetUserId instead of tokenUserId
         email: email,
         password_encrypted: passwordEncrypted,
         notes: notes || null,
