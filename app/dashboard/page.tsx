@@ -30,6 +30,16 @@ interface Resource {
     is_active: boolean;
     created_at: string;
   }>;
+  elevenlabs_accounts: Array<{
+    id: string;
+    email: string;
+    password: string;
+    credits: number;
+    tier: string;
+    status: string;
+    is_active: boolean;
+    created_at: string;
+  }>;
 }
 
 export default function DashboardPage() {
@@ -39,7 +49,7 @@ export default function DashboardPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [resources, setResources] = useState<Resource | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'api_keys' | 'proxies' | 'rotating_keys'>('api_keys');
+  const [activeTab, setActiveTab] = useState<'api_keys' | 'proxies' | 'rotating_keys' | 'elevenlabs_accounts'>('elevenlabs_accounts');
 
   // Form states
   const [showUserForm, setShowUserForm] = useState(false);
@@ -349,20 +359,23 @@ export default function DashboardPage() {
     }
   };
 
-  const deleteAllResources = async (type: 'api_keys' | 'proxies' | 'rotating_keys') => {
+  const deleteAllResources = async (type: 'api_keys' | 'proxies' | 'rotating_keys' | 'elevenlabs_accounts') => {
     if (!selectedUser) return;
 
     const typeNames = {
       api_keys: 'API Keys',
       proxies: 'Proxies',
       rotating_keys: 'Rotating Keys',
+      elevenlabs_accounts: 'ElevenLabs Accounts',
     };
 
     const count = type === 'api_keys' 
       ? resources?.api_keys?.length 
       : type === 'proxies' 
       ? resources?.proxies?.length 
-      : resources?.rotating_proxy_keys?.length;
+      : type === 'rotating_keys'
+      ? resources?.rotating_proxy_keys?.length
+      : resources?.elevenlabs_accounts?.length;
 
     if (!count || count === 0) {
       alert('Không có gì để xóa!');
@@ -570,6 +583,16 @@ export default function DashboardPage() {
                       }`}
                     >
                       🔄 Rotating Keys ({resources?.rotating_proxy_keys?.length || 0})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('elevenlabs_accounts')}
+                      className={`px-6 py-4 text-sm font-medium ${
+                        activeTab === 'elevenlabs_accounts'
+                          ? 'border-b-2 border-blue-500 text-blue-600'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      👤 ElevenLabs Accounts ({resources?.elevenlabs_accounts?.length || 0})
                     </button>
                   </nav>
                 </div>
@@ -933,6 +956,146 @@ export default function DashboardPage() {
                         ))}
                         {(!resources?.rotating_proxy_keys || resources.rotating_proxy_keys.length === 0) && (
                           <p className="text-gray-500 text-center py-8">Chưa có rotating key nào</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ==================== ELEVENLABS ACCOUNTS TAB ==================== */}
+                  {activeTab === 'elevenlabs_accounts' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold">👤 ElevenLabs Accounts</h3>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => deleteAllResources('elevenlabs_accounts')}
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+                          >
+                            🗑️ Xóa tất cả
+                          </button>
+                          <button
+                            onClick={() => setShowApiKeyForm(!showApiKeyForm)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+                          >
+                            + Thêm Account
+                          </button>
+                        </div>
+                      </div>
+
+                      {showApiKeyForm && (
+                        <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                          <div className="flex gap-2 mb-2">
+                            <button
+                              onClick={() => setBulkMode(false)}
+                              className={`px-3 py-1 rounded text-sm ${!bulkMode ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+                            >
+                              Thêm 1 account
+                            </button>
+                            <button
+                              onClick={() => setBulkMode(true)}
+                              className={`px-3 py-1 rounded text-sm ${bulkMode ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}
+                            >
+                              Thêm nhiều accounts (bulk)
+                            </button>
+                          </div>
+                          
+                          {bulkMode ? (
+                            <textarea
+                              placeholder="Paste nhiều accounts, mỗi account 1 dòng (email:password hoặc email|password)&#10;user1@example.com:password1&#10;user2@example.com|password2"
+                              className="w-full px-4 py-2 border rounded mb-2 font-mono text-sm"
+                              rows={10}
+                              value={newApiKey}
+                              onChange={(e) => setNewApiKey(e.target.value)}
+                            />
+                          ) : (
+                            <div className="space-y-2">
+                              <input
+                                type="email"
+                                placeholder="Email (example@hotmail.com)"
+                                className="w-full px-4 py-2 border rounded"
+                                value={newApiKey.split(':')[0] || ''}
+                                onChange={(e) => {
+                                  const password = newApiKey.split(':')[1] || '';
+                                  setNewApiKey(`${e.target.value}:${password}`);
+                                }}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Password"
+                                className="w-full px-4 py-2 border rounded"
+                                value={newApiKey.split(':')[1] || ''}
+                                onChange={(e) => {
+                                  const email = newApiKey.split(':')[0] || '';
+                                  setNewApiKey(`${email}:${e.target.value}`);
+                                }}
+                              />
+                            </div>
+                          )}
+                          
+                          {bulkProgress.loading && (
+                            <div className="mb-2 mt-2">
+                              <div className="flex justify-between text-sm mb-1">
+                                <span>Đang thêm...</span>
+                                <span>{bulkProgress.current}/{bulkProgress.total}</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div 
+                                  className="bg-blue-600 h-2 rounded-full transition-all"
+                                  style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          )}
+                          
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={addApiKey}
+                              disabled={bulkProgress.loading}
+                              className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {bulkProgress.loading ? 'Đang xử lý...' : (bulkMode ? 'Thêm tất cả' : 'Thêm')}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowApiKeyForm(false);
+                                setBulkMode(false);
+                                setNewApiKey('');
+                              }}
+                              disabled={bulkProgress.loading}
+                              className="bg-gray-300 text-gray-700 px-4 py-2 rounded disabled:opacity-50"
+                            >
+                              Hủy
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        {resources?.elevenlabs_accounts?.map((acc) => (
+                          <div
+                            key={acc.id}
+                            className="flex justify-between items-center bg-gray-50 p-4 rounded-lg"
+                          >
+                            <div className="flex-1">
+                              <div className="font-medium">{acc.email}</div>
+                              <div className="text-sm text-gray-500 mt-1">
+                                <span className="inline-block mr-3">💰 {acc.credits} credits</span>
+                                <span className="inline-block mr-3">🎯 {acc.tier}</span>
+                                <span className={`inline-block px-2 py-0.5 rounded text-xs ${acc.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                  {acc.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => deleteResource('elevenlabs-accounts', acc.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              🗑️ Xóa
+                            </button>
+                          </div>
+                        ))}
+                        {(!resources?.elevenlabs_accounts || resources.elevenlabs_accounts.length === 0) && (
+                          <p className="text-gray-500 text-center py-8">Chưa có account nào</p>
                         )}
                       </div>
                     </div>
