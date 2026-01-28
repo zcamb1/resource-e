@@ -1,0 +1,28 @@
+# ================================
+# COPY NỘI DUNG NÀY VÀO FILE .env.local
+# ================================
+
+# Tạo file .env.local trong thư mục resource-management-server
+# Copy toàn bộ nội dung bên dưới vào file đó
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://hniirgxqqzltezdmzuyj.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuaWlyZ3hxcXpsdGV6ZG16dXlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2ODEwMjEsImV4cCI6MjA4MzI1NzAyMX0.9k7-jAMVFEBJVWRSM8rnjx22VSMAJCSWraUqbiQdnr0
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhuaWlyZ3hxcXpsdGV6ZG16dXlqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzY4MTAyMSwiZXhwIjoyMDgzMjU3MDIxfQ.wH0_ypBSFd6Gy5NlKxhMxLFhIo6RG407WCjhCEE-Gk8
+
+# JWT Secret (generated random string - KEEP THIS SECRET!)
+JWT_SECRET=a7f3e9c2b8d4f1a6e5c9b3d7f2a8e4c1b6d9f3a7e2c5b8d1f4a9e6c2b7d3f8a5
+
+# App Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# ================================
+# NEXT STEPS:
+# ================================
+# 1. Tạo file .env.local trong thư mục này
+# 2. Copy toàn bộ nội dung phía trên (từ NEXT_PUBLIC_SUPABASE_URL đến cuối)
+# 3. Save file
+# 4. Run: npm install
+# 5. Run: npm run dev
+
+
