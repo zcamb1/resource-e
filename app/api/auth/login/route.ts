@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { validateApiKey } from '@/middleware/apiKeyAuth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,13 +20,8 @@ const loginSchema = z.object({
 
 // POST /api/auth/login
 export async function POST(request: NextRequest) {
-  // Validate API key
-  if (!validateApiKey(request)) {
-    return NextResponse.json(
-      { error: 'Unauthorized: Invalid or missing API key' },
-      { status: 401 }
-    );
-  }
+  // ❌ REMOVED: Login endpoint should NOT require API key authentication
+  // Users need to login to GET the token, not provide it!
   
   try {
     const body = await request.json();
