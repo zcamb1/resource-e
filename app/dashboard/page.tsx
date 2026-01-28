@@ -96,7 +96,11 @@ export default function DashboardPage() {
 
   const fetchUserResources = async (userId: string) => {
     try {
-      const response = await fetch(`/api/resources/${userId}`);
+      const response = await fetch(`/api/resources/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setResources(data);
