@@ -255,3 +255,58 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
+// DELETE - Delete account
+export async function DELETE(request: NextRequest) {
+  try {
+    const userId = verifyToken(request);
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // Get account ID from URL
+    const url = new URL(request.url);
+    const id = url.pathname.split('/').pop();
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Account ID is required' },
+        { status: 400 }
+      );
+    }
+    
+    // Delete from database (hard delete)
+    const { data, error } = await supabase
+      .from('elevenlabs_accounts')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)  // Ensure user owns this account
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Database error:', error);
+      return NextResponse.json({ error: 'Database error' }, { status: 500 });
+    }
+    
+    if (!data) {
+      return NextResponse.json(
+        { error: 'Account not found or unauthorized' },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Account deleted successfully',
+      deleted_id: id
+    });
+    
+  } catch (error: any) {
+    console.error('Server error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    );
+  }
+}
