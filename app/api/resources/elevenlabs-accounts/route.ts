@@ -259,8 +259,8 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete account
 export async function DELETE(request: NextRequest) {
   try {
-    const userId = verifyToken(request);
-    if (!userId) {
+    const tokenUserId = verifyToken(request);
+    if (!tokenUserId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -276,11 +276,11 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Delete from database (hard delete)
+    // ⚠️ KHÔNG check user_id nữa - admin có thể xóa account của bất kỳ user nào
     const { data, error } = await supabase
       .from('elevenlabs_accounts')
       .delete()
       .eq('id', id)
-      .eq('user_id', userId)  // Ensure user owns this account
       .select()
       .single();
     
@@ -291,7 +291,7 @@ export async function DELETE(request: NextRequest) {
     
     if (!data) {
       return NextResponse.json(
-        { error: 'Account not found or unauthorized' },
+        { error: 'Account not found' },
         { status: 404 }
       );
     }
@@ -299,7 +299,8 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Account deleted successfully',
-      deleted_id: id
+      deleted_id: id,
+      deleted_email: data.email
     });
     
   } catch (error: any) {
