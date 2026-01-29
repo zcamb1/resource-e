@@ -176,32 +176,29 @@ export default function DashboardPage() {
         
         setBulkProgress({ current: 0, total: accounts.length, loading: true });
         
-        let successCount = 0;
-        for (let i = 0; i < accounts.length; i++) {
-          const acc = accounts[i];
-          
-          const response = await fetch('/api/resources/elevenlabs-accounts', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            },
-            body: JSON.stringify({
-              userId: selectedUser.id,  // ✅ Thêm userId của user được chọn
-              email: acc.email,
-              password: acc.password,
-            }),
-          });
-          
-          if (response.ok) {
-            successCount++;
-          }
-          
-          setBulkProgress({ current: i + 1, total: accounts.length, loading: true });
-        }
-        
+        // 🚀 GỌI BULK API THAY VÌ LOOP
+        const response = await fetch('/api/resources/bulk', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: JSON.stringify({
+            userId: selectedUser.id,
+            type: 'elevenlabs_accounts',
+            items: accounts,
+          }),
+        });
+
+        const data = await response.json();
         setBulkProgress({ current: 0, total: 0, loading: false });
-        alert(`✅ Đã thêm ${successCount}/${accounts.length} accounts!`);
+        
+        if (response.ok) {
+          alert(`✅ Đã thêm ${data.count}/${accounts.length} accounts!`);
+        } else {
+          alert(`❌ Lỗi: ${data.error}`);
+          return;
+        }
       } else {
         // Single mode: email:password format
         const [email, password] = newAccountData.split(':').map(s => s.trim());

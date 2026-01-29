@@ -1,10 +1,25 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-32-char-encryption-key-here!!';
+
+// Encrypt password before storing
+function encryptPassword(password: string): string {
+  const iv = crypto.randomBytes(16);
+  const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  
+  let encrypted = cipher.update(password, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  
+  return iv.toString('hex') + ':' + encrypted;
+}
 
 // POST bulk insert resources
 export async function POST(request: Request) {
@@ -87,6 +102,29 @@ export async function POST(request: Request) {
       }
 
       insertedCount = keys.length;
+    } else if (type === 'elevenlabs_accounts') {
+      // Bulk insert ElevenLabs accounts with encryption
+      const accountRecords = items.map((acc: {email: string, password: string}) => ({
+        email: acc.email,
+        password_encrypted: encryptPassword(acc.password),
+        user_id: userId,
+        is_active: true,
+      }));
+
+      const { data: accounts, error: accountError } = await supabase
+        .from('elevenlabs_accounts')
+        .insert(accountRecords)
+        .select();
+
+      if (accountError || !accounts) {
+        console.error('Error inserting ElevenLabs accounts:', accountError);
+        return NextResponse.json(
+          { error: 'Failed to insert accounts', details: accountError?.message, count: 0 },
+          { status: 500 }
+        );
+      }
+
+      insertedCount = accounts.length;
     }
 
     return NextResponse.json({
