@@ -53,6 +53,17 @@ export async function POST(request: Request) {
       if (!error && data) {
         deletedCount = data.length;
       }
+    } else if (type === 'elevenlabs_accounts') {
+      // Delete ElevenLabs accounts directly by user_id
+      const { data, error } = await supabase
+        .from('elevenlabs_accounts')
+        .delete()
+        .eq('user_id', userId)
+        .select();
+
+      if (!error && data) {
+        deletedCount = data.length;
+      }
     }
 
     return NextResponse.json({
