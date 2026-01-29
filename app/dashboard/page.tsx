@@ -378,18 +378,26 @@ export default function DashboardPage() {
     if (!selectedUser) return;
 
     try {
-      const response = await fetch(`/api/resources/${type}/${id}`, {
+      // Gửi DELETE với ID trong body (vì Next.js routing)
+      const response = await fetch(`/api/resources/${type}`, {
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
+        body: JSON.stringify({ id }),
       });
 
       if (response.ok) {
         fetchUserResources(selectedUser.id);
+      } else {
+        const data = await response.json();
+        console.error('Delete failed:', data);
+        alert(`Xóa thất bại: ${data.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error deleting resource:', error);
+      alert('Lỗi kết nối server!');
     }
   };
 

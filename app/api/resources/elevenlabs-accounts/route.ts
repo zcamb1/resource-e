@@ -264,9 +264,9 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Get account ID from URL
-    const url = new URL(request.url);
-    const id = url.pathname.split('/').pop();
+    // Get account ID from request body (not URL)
+    const body = await request.json();
+    const { id } = body;
     
     if (!id) {
       return NextResponse.json(
